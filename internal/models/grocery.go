@@ -11,7 +11,6 @@ import (
 	"github.com/Adam-Arezza/gocery-tui/internal/styles"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type GroceryItem struct {
@@ -116,6 +115,8 @@ func (g *GroceryStore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                             Stock: item.Stock,
                             Quantity: 1,
                         },
+                        Height: g.Height/2,
+                        Width: g.Width/2,
                     }
                     g.ShowQuantityModal = true
                     return g,cmd
@@ -164,7 +165,7 @@ func (g *GroceryStore) View() string {
     listView := g.List.View()
 
     if g.ShowQuantityModal {
-        return g.renderModal()
+        return g.ItemModal.View()
     }
 
     if g.Focused {
@@ -203,15 +204,3 @@ func (g *GroceryStore) LoadItems() tea.Cmd {
     }
 }
 
-func (g *GroceryStore) renderModal() string{
-    modalView := g.ItemModal.View()
-    overlay := lipgloss.Place(
-            g.Width, 
-            g.Height,
-            lipgloss.Center,
-            lipgloss.Center,
-            modalView,
-            lipgloss.WithWhitespaceForeground(lipgloss.Color("240")),
-        )
-    return overlay
-}

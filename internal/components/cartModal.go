@@ -48,19 +48,24 @@ func (c *CartModal) Update(msg tea.Msg)(tea.Model, tea.Cmd){
     return c,cmd 
 }
 
-func (c CartModal) View() string {
-    price := styles.HeaderStyle.Render(fmt.Sprintf("Total Price: $%.2f\n", c.TotalPrice))
-    wallet := styles.HeaderStyle.Render(fmt.Sprintf("Wallet: $%.2f\n", c.Wallet))
+func (c *CartModal) View() string {
+    price := fmt.Sprintf("Total Price: $%.2f\n", c.TotalPrice)
+    wallet := fmt.Sprintf("Wallet: $%.2f\n", c.Wallet)
     confirm := styles.HelpStyle.Render(fmt.Sprintf("Confirm with space or 'c' | esc to cancel"))
     modal := styles.ModalStyle.Render(wallet, price, confirm)
     if c.InsufficientFunds{
         fundsMsg := lipgloss.NewStyle(). 
         Foreground(lipgloss.Color("160")).
         Render(fmt.Sprint("Not enough funds in wallet for purchase!"))        
-        modal := styles.ModalStyle.Render(wallet, price, confirm + "\n", fundsMsg)
-        return modal
+        modal = styles.ModalStyle.Render(wallet, price, confirm + "\n", fundsMsg)
     }
 
-    return modal
+    modalScreen := lipgloss.Place(
+        c.Width,
+        c.Height,
+        lipgloss.Center,
+        lipgloss.Center,
+        modal,
+    )
+    return modalScreen
 }
-

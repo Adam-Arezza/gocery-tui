@@ -23,7 +23,8 @@ type CartModel struct{
 }
 
 func (cart *CartModel) Init() tea.Cmd {
-return nil
+    cart.PurchaseModal = cart.NewPurchaseModal()
+    return nil
 }
 
 func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
@@ -34,6 +35,8 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
             cart.Width = msg.Width / 2
             cart.Height = msg.Height
             cart.Items.SetSize(cart.Width, cart.Height-2)
+            cart.PurchaseModal.Width = cart.Width
+            cart.PurchaseModal.Height = cart.Height
 
         case NewCartItemMsg:
             var item components.CartItem
@@ -55,12 +58,11 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
 
         case components.CloseModalMsg:
             cart.ShowPurchaseModal = false
+            cart.PurchaseModal.InsufficientFunds = false
             return cart, nil
 
         case tea.KeyMsg:
             if cart.Focused{
-                //if the purchase modal is open
-                //forward msgs there first
                 if cart.ShowPurchaseModal{
                     modal, cmd := cart.PurchaseModal.Update(msg)
                     if modal, ok := modal.(*components.CartModal); ok {
@@ -112,7 +114,6 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
 
                 case " ":
                     cart.ShowPurchaseModal = true
-                    cart.PurchaseModal.InsufficientFunds = false
                     return cart, cmd
 
                 case "esc":
@@ -175,18 +176,15 @@ func NewGroceryCart() *CartModel {
     groceryList.Styles.HelpStyle = styles.HelpStyle
     groceryList.Help.Styles.ShortDesc = styles.HelpMenuStyle
     groceryList.Help.Styles.ShortKey = styles.HelpMenuStyle 
-    startingAmount := 25.00
-    
     
     return &CartModel{
         Items: groceryList,
         ItemStyles: &delegate.StyleDelegate,
-        Wallet: float32(startingAmount),
-        PurchaseModal: &components.CartModal{
-            Wallet: float32(startingAmount),
-            TotalPrice: 0.00,
-            Confirm: false,
-    },
+        Wallet: 25.00,
+        Total: 0.00,
+        ShowPurchaseModal: false,
+        Focused: false,
+        Selected: false,
     }
 }
 
@@ -207,3 +205,14 @@ func (cart *CartModel) updateTotal(total float32){
     cart.PurchaseModal.TotalPrice = total
 }
 
+func (cart *CartModel) NewPurchaseModal() (*components.CartModal){
+    modal := components.CartModal{
+        Height: cart.Height/2,
+        Width: cart.Width/2,
+        Wallet: cart.Wallet,
+        TotalPrice: cart.Total,
+        InsufficientFunds: false,
+        Confirm: false,
+    }
+    return &modal
+}
