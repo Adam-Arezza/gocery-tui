@@ -4,6 +4,7 @@ import (
     "fmt"
 	tea "github.com/charmbracelet/bubbletea"
     "github.com/Adam-Arezza/gocery-tui/internal/styles"
+    "github.com/charmbracelet/lipgloss"
 )
 
 type CartItem struct {
@@ -48,15 +49,17 @@ func (gm *GroceryModal) Update(msg tea.Msg) (tea.Model, tea.Cmd){
 
 func (gm *GroceryModal) View() string{
     header := styles.HeaderStyle.Render("Select Quantity")
+    item := lipgloss.NewStyle(). 
+                Foreground(lipgloss.Color("200")). 
+                Render(fmt.Sprintf("Item: %s\n", gm.GroceryItem.Name))
     details := fmt.Sprintf(
-        "Item: %s\nPrice: $%.2f\nStock: %d\n\nQuantity: %d",
-        gm.GroceryItem.Name,
+        "Price: $%.2f\nStock: %d\n\nQuantity: %d",
         gm.GroceryItem.Price,
         gm.GroceryItem.Stock,
         gm.GroceryItem.Quantity,
     )
-    instructions := "↑/↓ to change quantity\nEnter to confirm\nEsc to cancel"
-    content := fmt.Sprintf("%s\n%s\n\n%s", header, details, instructions)
+    instructions := "↑/k ↓/j to change quantity\nEnter to confirm\nEsc to cancel"
+    content := fmt.Sprintf("%s\n%s\n%s\n\n%s", header, item,  details, instructions)
     return styles.ModalStyle.Render(content)
 }
 

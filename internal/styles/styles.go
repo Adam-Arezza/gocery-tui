@@ -82,6 +82,7 @@ var (
     ModalStyle = lipgloss.NewStyle(). 
         Border(lipgloss.RoundedBorder()). 
         BorderForeground(lipgloss.Color("#7aeb98")).
+        Foreground(primaryText). 
         Padding(3)
 
     ActiveCartItemStyle = lipgloss.NewStyle(). 

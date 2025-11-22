@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+
 	"github.com/Adam-Arezza/gocery-tui/internal/components"
 	"github.com/Adam-Arezza/gocery-tui/internal/styles"
 	"github.com/charmbracelet/bubbles/list"
@@ -17,6 +18,8 @@ type CartModel struct{
     Total float32
     Wallet float32
     ItemStyles *list.DefaultDelegate
+    PurchaseModal *components.CartModal
+    ShowPurchaseModal bool
 }
 
 func (cart *CartModel) Init() tea.Cmd {
@@ -38,59 +41,94 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
             cartItems := cart.Items.Items() 
             cartItems = append(cartItems, item)
             cart.Items.SetItems(cartItems)
-            cart.Total = cart.CartSum()
+            cart.Total = cart.cartSum()
+            cart.PurchaseModal.TotalPrice = cart.Total
             return cart, cmd
 
-        case tea.KeyMsg:
-            switch msg.String(){
+        case components.PurchaseMsg:
+            cart.ShowPurchaseModal = false
+            cart.Wallet = cart.Wallet - cart.Total
+            cart.updateTotal(0.00)
+            cart.Items.SetItems([]list.Item{})
+            cart.PurchaseModal.Wallet = cart.Wallet
+            return cart, nil
 
-                case "enter":
-                if cart.Focused{
-                    cart.Selected = !cart.Selected
+        case components.CloseModalMsg:
+            cart.ShowPurchaseModal = false
+            return cart, nil
+
+        case tea.KeyMsg:
+            if cart.Focused{
+                //if the purchase modal is open
+                //forward msgs there first
+                if cart.ShowPurchaseModal{
+                    modal, cmd := cart.PurchaseModal.Update(msg)
+                    if modal, ok := modal.(*components.CartModal); ok {
+                        cart.PurchaseModal = modal
+                    }
                     return cart, cmd
                 }
 
+                switch msg.String(){
+
+                case "enter":
+                    cart.Selected = !cart.Selected
+                    return cart, cmd
+
                 case "up", "k":
-                    if cart.Focused && cart.Selected{
+                    if cart.Selected{
                         item := cart.Items.SelectedItem().(components.CartItem)
                         idx := cart.Items.Index()
                         if item.Quantity >= 1 && item.Quantity < item.Stock{
                             item.Quantity++
                             cart.Items.Items()[idx] = item
                             cart.Items.SetItems(cart.Items.Items())
-                            cart.Total = cart.CartSum()
+                            cart.updateTotal(cart.cartSum())
                             return cart, cmd
                         }
                     }
 
                 case "down","j":
-                    if cart.Focused && cart.Selected{
+                    if cart.Selected{
                         item := cart.Items.SelectedItem().(components.CartItem)
                         idx := cart.Items.Index()
                         if item.Quantity >= 1{
                             item.Quantity--
                             cart.Items.Items()[idx] = item
                             cart.Items.SetItems(cart.Items.Items())
-                            cart.Total = cart.CartSum()
+                            cart.updateTotal(cart.cartSum())
                             return cart, cmd
                         }
                     }
 
                 case "d":
-                    if cart.Focused && cart.Selected{
+                    if cart.Selected{
                         idx := cart.Items.Index()
                         cart.Items.RemoveItem(idx)
                         cart.Selected = false
-                        cart.Total = cart.CartSum()
+                        cart.updateTotal(cart.cartSum())
                         return cart, cmd
                     }
-            }
 
+                case " ":
+                    cart.ShowPurchaseModal = true
+                    cart.PurchaseModal.InsufficientFunds = false
+                    return cart, cmd
+
+                case "esc":
+                    if cart.ShowPurchaseModal{
+                        cart.ShowPurchaseModal = false
+                    }
+                    return cart, cmd
+            }
+        }
     }
+
     if cart.Focused{
         cart.Items, cmd = cart.Items.Update(msg)
         return cart, cmd
     }
+
     return cart, cmd
 }
 
@@ -102,10 +140,14 @@ func (cart *CartModel) View() string{
     }
     list := cart.Items.View()
     cartTotal := styles.GroceryTotal.Render(fmt.Sprintf("TOTAL: $ %.2f",cart.Total))
+    wallet := styles.GroceryTotal.Render(fmt.Sprintf("WALLET: $ %.2f", cart.Wallet))
+    if cart.ShowPurchaseModal{
+        return cart.PurchaseModal.View()
+    }
     if cart.Focused{
-        return styles.FocusedStyle.Height(cart.Height).Width(cart.Width).Render(list, cartTotal)
+        return styles.FocusedStyle.Height(cart.Height).Width(cart.Width).Render(list, cartTotal, wallet)
     }else{
-        return styles.UnFocusedStyle.Height(cart.Height).Width(cart.Width).Render(list, cartTotal)
+        return styles.UnFocusedStyle.Height(cart.Height).Width(cart.Width).Render(list, cartTotal, wallet)
     }
 }
 
@@ -133,15 +175,22 @@ func NewGroceryCart() *CartModel {
     groceryList.Styles.HelpStyle = styles.HelpStyle
     groceryList.Help.Styles.ShortDesc = styles.HelpMenuStyle
     groceryList.Help.Styles.ShortKey = styles.HelpMenuStyle 
-
+    startingAmount := 25.00
+    
     
     return &CartModel{
         Items: groceryList,
         ItemStyles: &delegate.StyleDelegate,
+        Wallet: float32(startingAmount),
+        PurchaseModal: &components.CartModal{
+            Wallet: float32(startingAmount),
+            TotalPrice: 0.00,
+            Confirm: false,
+    },
     }
 }
 
-func (cart *CartModel) CartSum() float32 {
+func (cart *CartModel) cartSum() float32 {
     items := cart.Items.Items()
     var sum float32
     for _, item := range items{
@@ -152,3 +201,9 @@ func (cart *CartModel) CartSum() float32 {
 
     return sum
 }
+
+func (cart *CartModel) updateTotal(total float32){
+    cart.Total = total
+    cart.PurchaseModal.TotalPrice = total
+}
+
