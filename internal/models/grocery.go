@@ -96,10 +96,6 @@ func (g *GroceryStore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         g.List.SetItems(items)
         return g, cmd
 
-    case error:
-        g.Debug += fmt.Sprintf("Error: %v\n", msg)
-        return g, cmd
-
     case tea.KeyMsg:
 
         switch msg.String(){
@@ -110,6 +106,7 @@ func (g *GroceryStore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                 if ok{
                     g.ItemModal = components.GroceryModal{
                         GroceryItem: components.CartItem{
+                            Id: item.Id,
                             Name: item.Title(),
                             Price: item.Price,
                             Stock: item.Stock,

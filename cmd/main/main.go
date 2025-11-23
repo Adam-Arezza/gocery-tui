@@ -49,6 +49,9 @@ func (m *model) Update(msg tea.Msg)(tea.Model, tea.Cmd){
         }
         return m, nil
 
+    case models.CompletePurchaseMsg:
+        return m, m.groceryStore.LoadItems()
+
 	case tea.KeyMsg:
         switch msg.String() {
 		case "ctrl+c", "q":
@@ -101,12 +104,12 @@ func (m *model) View()string{
 }
 
 func main(){
-    serverConfig, err := config.Load("c:/projects/gocery-tui/config/config.json")
+    serverConfig, err := config.Load("./config.json")
     if err != nil {
         fmt.Printf(err.Error())
     }
     groceryStore := models.NewGroceryStore(*serverConfig)
-    groceryCart := models.NewGroceryCart()
+    groceryCart := models.NewGroceryCart(*&serverConfig)
     p := tea.NewProgram(&model{groceryStore: groceryStore, groceryCart: groceryCart, Focus: false}, tea.WithAltScreen())
 	if _,err := p.Run(); err != nil {
 		fmt.Println("Error:", err)

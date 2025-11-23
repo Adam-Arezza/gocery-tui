@@ -8,9 +8,10 @@ import (
 )
 
 type CartItem struct {
-    Name     string  
-    Price    float32 
-    Stock    int     
+    Id int
+    Name string  
+    Price float32 
+    Stock int     
     Quantity int
 }
 

@@ -2,7 +2,10 @@ package models
 
 import (
 	"fmt"
-
+	"net/http"
+    "encoding/json"
+    "bytes"
+	"github.com/Adam-Arezza/gocery-tui/config"
 	"github.com/Adam-Arezza/gocery-tui/internal/components"
 	"github.com/Adam-Arezza/gocery-tui/internal/styles"
 	"github.com/charmbracelet/bubbles/list"
@@ -20,6 +23,14 @@ type CartModel struct{
     ItemStyles *list.DefaultDelegate
     PurchaseModal *components.CartModal
     ShowPurchaseModal bool
+    ServerConfig *config.ServerConfig
+}
+
+type CompletePurchaseMsg struct {}
+type PurchaseError struct {}
+type PurchaseRequestItem struct {
+    ItemId int `json:"item_id"`
+    Stock int `json:"stock"`
 }
 
 func (cart *CartModel) Init() tea.Cmd {
@@ -49,12 +60,19 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
             return cart, cmd
 
         case components.PurchaseMsg:
+            purchaseItems := cart.getPurchaseItems()
+            cmd, err := cart.makePurchase(purchaseItems)
+            if err != nil {
+                return cart, func() tea.Msg{
+                    return PurchaseError{}
+                }
+            }
             cart.ShowPurchaseModal = false
             cart.Wallet = cart.Wallet - cart.Total
             cart.updateTotal(0.00)
             cart.Items.SetItems([]list.Item{})
             cart.PurchaseModal.Wallet = cart.Wallet
-            return cart, nil
+            return cart, cmd
 
         case components.CloseModalMsg:
             cart.ShowPurchaseModal = false
@@ -152,7 +170,7 @@ func (cart *CartModel) View() string{
     }
 }
 
-func NewGroceryCart() *CartModel {
+func NewGroceryCart(cfg *config.ServerConfig) *CartModel {
     delegate := styles.GroceryDelegate{
         StyleDelegate: list.NewDefaultDelegate(),
      }
@@ -185,6 +203,7 @@ func NewGroceryCart() *CartModel {
         ShowPurchaseModal: false,
         Focused: false,
         Selected: false,
+        ServerConfig: cfg,
     }
 }
 
@@ -215,4 +234,48 @@ func (cart *CartModel) NewPurchaseModal() (*components.CartModal){
         Confirm: false,
     }
     return &modal
+}
+
+func (cart *CartModel) makePurchase(items []PurchaseRequestItem) (tea.Cmd, error){
+    url := "http://" + cart.ServerConfig.Host + ":" + cart.ServerConfig.Port + "/grocery_items"
+    body := items
+
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+        return nil, err
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("Status:", resp.Status)
+
+    return func()tea.Msg{
+        return CompletePurchaseMsg{}
+    }, nil
+}
+
+func (cart *CartModel)getPurchaseItems()[]PurchaseRequestItem{
+    var items []PurchaseRequestItem
+    for _, item := range cart.Items.Items(){
+        cartItem := item.(components.CartItem)
+        newStock := cartItem.Stock - cartItem.Quantity
+        newItem := PurchaseRequestItem{
+            ItemId: cartItem.Id,
+            Stock: newStock,
+        }
+        items = append(items, newItem)
+    }
+    return items
 }
