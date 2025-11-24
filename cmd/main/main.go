@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/Adam-Arezza/gocery-tui/config"
 	"github.com/Adam-Arezza/gocery-tui/internal/models"
+    "github.com/Adam-Arezza/gocery-tui/internal/messages"
 	"github.com/Adam-Arezza/gocery-tui/internal/styles"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -49,7 +49,7 @@ func (m *model) Update(msg tea.Msg)(tea.Model, tea.Cmd){
         }
         return m, nil
 
-    case models.CompletePurchaseMsg:
+    case messages.CompletePurchaseMsg:
         return m, m.groceryStore.LoadItems()
 
 	case tea.KeyMsg:
@@ -77,7 +77,7 @@ func (m *model) Update(msg tea.Msg)(tea.Model, tea.Cmd){
             }
         }
 
-    case models.NewCartItemMsg:
+    case messages.NewCartItemMsg:
         m.groceryCart.Update(msg)
         return m, cmd
     }

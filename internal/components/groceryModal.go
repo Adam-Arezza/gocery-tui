@@ -4,19 +4,13 @@ import (
     "fmt"
 	tea "github.com/charmbracelet/bubbletea"
     "github.com/Adam-Arezza/gocery-tui/internal/styles"
+    "github.com/Adam-Arezza/gocery-tui/internal/types"
     "github.com/charmbracelet/lipgloss"
 )
 
-type CartItem struct {
-    Id int
-    Name string  
-    Price float32 
-    Stock int     
-    Quantity int
-}
 
 type GroceryModal struct{
-    GroceryItem CartItem
+    GroceryItem types.CartItem
     Height int
     Width int
 }
@@ -24,10 +18,6 @@ type GroceryModal struct{
 func (gm *GroceryModal) Init() tea.Cmd{
     return nil
 }
-
-func (c CartItem) Title() string       { return c.Name }
-func (c CartItem) Description() string { return fmt.Sprintf("Qty: %d | Price: $%.2f", c.Quantity, c.Price) }
-func (c CartItem) FilterValue() string { return c.Name }
 
 func (gm *GroceryModal) Update(msg tea.Msg) (tea.Model, tea.Cmd){
     var cmd tea.Cmd

@@ -5,25 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
 	"github.com/Adam-Arezza/gocery-tui/config"
 	"github.com/Adam-Arezza/gocery-tui/internal/components"
 	"github.com/Adam-Arezza/gocery-tui/internal/styles"
+    "github.com/Adam-Arezza/gocery-tui/internal/types"
+    "github.com/Adam-Arezza/gocery-tui/internal/messages"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-type GroceryItem struct {
-    Id       int     `json:"id"`
-    Name     string  `json:"item_name"`
-    Price    float32 `json:"unit_price"`
-    Stock    int     `json:"stock"`
-    Category int     `json:"category_id"`
-}
-
-func (g GroceryItem) Title() string       { return g.Name }
-func (g GroceryItem) Description() string { return fmt.Sprintf("Stock: %d | Price: $%.2f", g.Stock, g.Price) }
-func (g GroceryItem) FilterValue() string { return g.Name }
 
 type GroceryStore struct {
     List     list.Model
@@ -32,13 +21,9 @@ type GroceryStore struct {
     Width    int
     Debug    string
     ShowQuantityModal bool
-    SelectedItem *GroceryItem
+    SelectedItem *types.GroceryItem
     ItemModal components.GroceryModal
     GroceryServer config.ServerConfig
-}
-
-type NewCartItemMsg struct{
-    item components.CartItem
 }
 
 func NewGroceryStore(cfg config.ServerConfig) *GroceryStore {
@@ -75,7 +60,7 @@ func (g *GroceryStore) Init() tea.Cmd {
     return g.LoadItems()
 }
 
-type GroceryApiResponse []GroceryItem
+type GroceryApiResponse []types.GroceryItem
 
 func (g *GroceryStore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     var cmd tea.Cmd
@@ -102,10 +87,10 @@ func (g *GroceryStore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
         case "enter", " ":
             if !g.ShowQuantityModal && g.Focused{
-                item, ok := g.List.SelectedItem().(GroceryItem) 
+                item, ok := g.List.SelectedItem().(types.GroceryItem) 
                 if ok{
                     g.ItemModal = components.GroceryModal{
-                        GroceryItem: components.CartItem{
+                        GroceryItem: types.CartItem{
                             Id: item.Id,
                             Name: item.Title(),
                             Price: item.Price,
@@ -126,8 +111,8 @@ func (g *GroceryStore) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
                 if g.Focused{
                     newCartItem := g.ItemModal.GroceryItem
                     msg := func() (tea.Msg){
-                        return NewCartItemMsg{
-                            item: newCartItem,
+                        return messages.NewCartItemMsg{
+                            Item: newCartItem,
                         }
                     }
                     g.ShowQuantityModal = false
@@ -191,7 +176,7 @@ func (g *GroceryStore) LoadItems() tea.Cmd {
             return err
         }
 
-        var groceryItems []GroceryItem
+        var groceryItems []types.GroceryItem
         err = json.Unmarshal(body, &groceryItems)
         if err != nil {
             return err

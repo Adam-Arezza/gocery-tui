@@ -2,11 +2,11 @@ package models
 
 import (
 	"fmt"
-	"net/http"
-    "encoding/json"
-    "bytes"
 	"github.com/Adam-Arezza/gocery-tui/config"
 	"github.com/Adam-Arezza/gocery-tui/internal/components"
+    "github.com/Adam-Arezza/gocery-tui/internal/types"
+    "github.com/Adam-Arezza/gocery-tui/internal/messages"
+    "github.com/Adam-Arezza/gocery-tui/internal/services"
 	"github.com/Adam-Arezza/gocery-tui/internal/styles"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,12 +26,6 @@ type CartModel struct{
     ServerConfig *config.ServerConfig
 }
 
-type CompletePurchaseMsg struct {}
-type PurchaseError struct {}
-type PurchaseRequestItem struct {
-    ItemId int `json:"item_id"`
-    Stock int `json:"stock"`
-}
 
 func (cart *CartModel) Init() tea.Cmd {
     cart.PurchaseModal = cart.NewPurchaseModal()
@@ -49,9 +43,9 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
             cart.PurchaseModal.Width = cart.Width
             cart.PurchaseModal.Height = cart.Height
 
-        case NewCartItemMsg:
-            var item components.CartItem
-            item = msg.item
+        case messages.NewCartItemMsg:
+            var item types.CartItem
+            item = msg.Item
             cartItems := cart.Items.Items() 
             cartItems = append(cartItems, item)
             cart.Items.SetItems(cartItems)
@@ -59,12 +53,12 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
             cart.PurchaseModal.TotalPrice = cart.Total
             return cart, cmd
 
-        case components.PurchaseMsg:
+        case messages.PurchaseMsg:
             purchaseItems := cart.getPurchaseItems()
             cmd, err := cart.makePurchase(purchaseItems)
             if err != nil {
                 return cart, func() tea.Msg{
-                    return PurchaseError{}
+                    return messages.PurchaseError{}
                 }
             }
             cart.ShowPurchaseModal = false
@@ -74,7 +68,7 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
             cart.PurchaseModal.Wallet = cart.Wallet
             return cart, cmd
 
-        case components.CloseModalMsg:
+        case messages.CloseModalMsg:
             cart.ShowPurchaseModal = false
             cart.PurchaseModal.InsufficientFunds = false
             return cart, nil
@@ -97,7 +91,7 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
 
                 case "up", "k":
                     if cart.Selected{
-                        item := cart.Items.SelectedItem().(components.CartItem)
+                        item := cart.Items.SelectedItem().(types.CartItem)
                         idx := cart.Items.Index()
                         if item.Quantity >= 1 && item.Quantity < item.Stock{
                             item.Quantity++
@@ -110,7 +104,7 @@ func (cart *CartModel) Update(msg tea.Msg) (tea.Model, tea.Cmd){
 
                 case "down","j":
                     if cart.Selected{
-                        item := cart.Items.SelectedItem().(components.CartItem)
+                        item := cart.Items.SelectedItem().(types.CartItem)
                         idx := cart.Items.Index()
                         if item.Quantity >= 1{
                             item.Quantity--
@@ -211,7 +205,7 @@ func (cart *CartModel) cartSum() float32 {
     items := cart.Items.Items()
     var sum float32
     for _, item := range items{
-        if cartItem, ok := item.(components.CartItem); ok {
+        if cartItem, ok := item.(types.CartItem); ok {
             sum += cartItem.Price * float32(cartItem.Quantity)
         }
     }
@@ -236,42 +230,22 @@ func (cart *CartModel) NewPurchaseModal() (*components.CartModal){
     return &modal
 }
 
-func (cart *CartModel) makePurchase(items []PurchaseRequestItem) (tea.Cmd, error){
-    url := "http://" + cart.ServerConfig.Host + ":" + cart.ServerConfig.Port + "/grocery_items"
-    body := items
-
-	jsonData, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
+func (cart *CartModel) makePurchase(items []types.PurchaseRequestItem) (tea.Cmd, error){
+    err := services.UpdateGrocery(cart.ServerConfig, items)
+    if err != nil{
         return nil, err
-	}
-	defer resp.Body.Close()
-
-	fmt.Println("Status:", resp.Status)
-
+    }
     return func()tea.Msg{
-        return CompletePurchaseMsg{}
+        return messages.CompletePurchaseMsg{}
     }, nil
 }
 
-func (cart *CartModel)getPurchaseItems()[]PurchaseRequestItem{
-    var items []PurchaseRequestItem
+func (cart *CartModel)getPurchaseItems()[]types.PurchaseRequestItem{
+    var items []types.PurchaseRequestItem
     for _, item := range cart.Items.Items(){
-        cartItem := item.(components.CartItem)
+        cartItem := item.(types.CartItem)
         newStock := cartItem.Stock - cartItem.Quantity
-        newItem := PurchaseRequestItem{
+        newItem := types.PurchaseRequestItem{
             ItemId: cartItem.Id,
             Stock: newStock,
         }

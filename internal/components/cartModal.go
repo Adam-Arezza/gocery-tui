@@ -2,7 +2,7 @@ package components
 
 import (
 	"fmt"
-
+    "github.com/Adam-Arezza/gocery-tui/internal/messages"
 	"github.com/Adam-Arezza/gocery-tui/internal/styles"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -23,9 +23,6 @@ func (c *CartModal)Init() tea.Cmd{
     return nil
 }
 
-type PurchaseMsg struct{}
-type CloseModalMsg struct{}
-
 func (c *CartModal) Update(msg tea.Msg)(tea.Model, tea.Cmd){
     var cmd tea.Cmd
     switch msg := msg.(type){
@@ -37,11 +34,11 @@ func (c *CartModal) Update(msg tea.Msg)(tea.Model, tea.Cmd){
                 return c, cmd
             }
             c.Confirm = true
-            cmd := func () tea.Msg{return PurchaseMsg{}}
+            cmd := func () tea.Msg{return messages.PurchaseMsg{}}
             return c, cmd
 
         case "esc":
-            cmd := func() tea.Msg{return CloseModalMsg{}}
+            cmd := func() tea.Msg{return messages.CloseModalMsg{}}
             return c, cmd
         }
     }
